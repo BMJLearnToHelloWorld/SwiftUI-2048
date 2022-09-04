@@ -60,6 +60,8 @@ final class GameLogic : ObservableObject {
         lastGestureDirection = direction
         
         var moved = false
+        var mergeBools = [Bool]()
+        var merged = false
         
         let axis = direction == .left || direction == .right
         for row in 0..<4 {
@@ -74,7 +76,7 @@ final class GameLogic : ObservableObject {
                 rowSnapshot.append(nil)
             }
             
-            merge(blocks: &compactRow, reverse: direction == .down || direction == .right)
+            mergeBools.append(merge(blocks: &compactRow, reverse: direction == .down || direction == .right))
             
             var newRow = [IdentifiedBlock?]()
             compactRow.forEach { newRow.append($0) }
@@ -96,15 +98,25 @@ final class GameLogic : ObservableObject {
             }
         }
         
-        if moved {
+        // aviod getting two same line if player is always move with the same direction after starting the game
+        for mergeBool in mergeBools {
+            if mergeBool {
+                merged = true
+            }
+        }
+        
+        // so if blocks moved, merged as well, then generate two new blocks
+        if moved && merged {
             generateNewBlocks()
         }
     }
     
-    fileprivate func merge(blocks: inout [IdentifiedBlock], reverse: Bool) {
+    fileprivate func merge(blocks: inout [IdentifiedBlock], reverse: Bool) -> Bool {
         if reverse {
             blocks = blocks.reversed()
         }
+        
+        var merged = false
         
         blocks = blocks
             .map { (false, $0) }
@@ -114,6 +126,7 @@ final class GameLogic : ObservableObject {
                     var mergedBlock = item.1
                     mergedBlock.number *= 2
                     accPrefix.append((true, mergedBlock))
+                    merged = true
                     return accPrefix
                 } else {
                     var accTmp = acc
@@ -126,6 +139,8 @@ final class GameLogic : ObservableObject {
         if reverse {
             blocks = blocks.reversed()
         }
+        
+        return merged
     }
     
     @discardableResult fileprivate func generateNewBlocks() -> Bool {
